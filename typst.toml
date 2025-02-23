@@ -1,0 +1,10 @@
+[package]
+name = "typsium-smiles"
+version = "0.1.0"
+license = "MIT"
+entrypoint = "lib.typ"
+authors = ["β-吲哚基丙氨酸 <https://github.com/tryptophawa>"]
+description = "Simple SMILES structures in Typst"
+categories = [ "layout", "text", "paper" ]
+disciplines = [ "education", "chemistry" ]
+keywords = ["chemistry", "chemical", "smiles", "generator", "structure", "molecule", "compound", "atom", "lnChl"]
