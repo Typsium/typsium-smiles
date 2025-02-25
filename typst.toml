@@ -1,6 +1,7 @@
 [package]
 name = "typsium-smiles"
 version = "0.1.0"
+repository = "https://github.com/Typsium/typsium-smiles"
 license = "MIT"
 entrypoint = "lib.typ"
 authors = ["β-吲哚基丙氨酸 <https://github.com/tryptophawa>"]
