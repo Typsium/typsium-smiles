@@ -1,0 +1,18 @@
+struct ASTElement {
+	int type;
+	string value;
+	ASTElement children[];
+}
+
+protocol C parse {
+	string smiles;
+}
+
+protocol Typst result {
+	bool errored;
+	string error;
+	int from;
+	int squiggle;
+	int to;
+	ASTElement result;
+}
