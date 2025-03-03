@@ -9,10 +9,6 @@ protocol C parse {
 }
 
 protocol Typst result {
-	bool errored;
-	string error;
-	int from;
-	int squiggle;
-	int to;
 	ASTElement result;
 }
+

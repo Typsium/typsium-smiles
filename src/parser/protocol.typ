@@ -192,26 +192,14 @@
     children: f_children,
   ), offset)
 }
+#let encode-parse(value) = {
+  encode-string(value.at("smiles"))
+}
 #let decode-result(bytes) = {
   let offset = 0
-  let (f_error, size) = decode-char(bytes.slice(offset, bytes.len()))
-  offset += size
-  let (f_from, size) = decode-int(bytes.slice(offset, bytes.len()))
-  offset += size
-  let (f_squiggle, size) = decode-int(bytes.slice(offset, bytes.len()))
-  offset += size
-  let (f_to, size) = decode-int(bytes.slice(offset, bytes.len()))
-  offset += size
   let (f_result, size) = decode-ASTElement(bytes.slice(offset, bytes.len()))
   offset += size
   ((
-    error: f_error,
-    from: f_from,
-    squiggle: f_squiggle,
-    to: f_to,
     result: f_result,
   ), offset)
-}
-#let encode-parse(value) = {
-  encode-string(value.at("smiles"))
 }

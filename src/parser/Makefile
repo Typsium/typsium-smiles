@@ -1,24 +1,29 @@
 CC=emcc
 CONFIGURE=emconfigure
 EMMAKE=emmake
-SOURCES=$(wildcard *.c)
+SOURCES=$(wildcard */*.c)
 CFLAGS = -O2 --no-entry -sERROR_ON_UNDEFINED_SYMBOLS=0 -sFILESYSTEM=0 -sASSERTIONS=0 -sEXPORT_KEEPALIVE=1 -Wall -Wno-logical-op-parentheses
-INCLUDE_FLAGS = -I"src"
+INCLUDE_FLAGS = -I"."
 
-all: parser.wasm
 
-parser.wasm: $(SOURCES) ast
-	$(CC) $(CFLAGS) $(SOURCES) -o parser.wasm $(INCLUDE_FLAGS)
-	wasi-stub --stub-function env:__syscall_unlinkat,env:__syscall_faccessat ./parser.wasm.wasm
-	mv ./"parser.wasm - stubbed.wasm" ./parser.wasm.wasm
+parser.wasm: $(SOURCES) ast/protocol.c ast/protocol.h
+	$(CC) $(CFLAGS) parser.c$(SOURCES) -o parser.wasm $(INCLUDE_FLAGS)
+	wasi-stub --stub-function env:__syscall_unlinkat,env:__syscall_faccessat ./parser.wasm
+	mv ./"parser - stubbed.wasm" ./parser.wasm
 
-ast ast.c ast.h: ast.prot
-	wasmpg ast.prot -t . -c .
+all: parser.wasm test
+
+ast ast/protocol.c ast/protocol.h: ast/ast.prot
+	wasmpg ast/ast.prot -c ast -t .
+
+test: $(SOURCES) ast
+	gcc -g -O2 -Wall test.c $(SOURCES) -o test_parser $(INCLUDE_FLAGS) -I"./test/" -DTEST
 
 format:
-	clang-format -i -style=file src/*.c src/*/*.c src/*/*.h
+	clang-format -i -style=file *.c *.h
 
 clean:
 	rm -f *.wasm \
-		  ast.c \
-		  ast.h
+		  ast/protocol.c \
+		  ast/protocol.h \
+		  protocol.typ

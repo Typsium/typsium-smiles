@@ -1,0 +1,2 @@
+#define PROTOCOL_FUNCTION extern
+#define EMSCRIPTEN_KEEPALIVE

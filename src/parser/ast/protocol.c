@@ -104,28 +104,6 @@ int encode_ASTElement(const ASTElement *s, uint8_t *__input_buffer, size_t *buff
     *buffer_offset += __buffer_offset;
     return 0;
 }
-void free_result(result *s) {
-    free_ASTElement(&s->result);
-}
-size_t result_size(const void *s){
-	return 1 + TYPST_INT_SIZE + TYPST_INT_SIZE + TYPST_INT_SIZE + ASTElement_size((void*)&((result*)s)->result);
-}
-int encode_result(const result *s) {
-    size_t buffer_len = result_size(s);
-    INIT_BUFFER_PACK(buffer_len)
-    int err;
-	(void)err;
-    CHAR_PACK(s->error)
-    INT_PACK(s->from)
-    INT_PACK(s->squiggle)
-    INT_PACK(s->to)
-        if ((err = encode_ASTElement(&s->result, __input_buffer + __buffer_offset, &buffer_len, &__buffer_offset))) {
-            return err;
-        }
-
-    wasm_minimal_protocol_send_result_to_host(__input_buffer, buffer_len);
-    return 0;
-}
 void free_parse(parse *s) {
     if (s->smiles) {
         free(s->smiles);
@@ -137,5 +115,23 @@ int decode_parse(size_t buffer_len, parse *out) {
     (void)err;
     NEXT_STR(out->smiles)
     FREE_BUFFER()
+    return 0;
+}
+void free_result(result *s) {
+    free_ASTElement(&s->result);
+}
+size_t result_size(const void *s){
+	return ASTElement_size((void*)&((result*)s)->result);
+}
+int encode_result(const result *s) {
+    size_t buffer_len = result_size(s);
+    INIT_BUFFER_PACK(buffer_len)
+    int err;
+	(void)err;
+        if ((err = encode_ASTElement(&s->result, __input_buffer + __buffer_offset, &buffer_len, &__buffer_offset))) {
+            return err;
+        }
+
+    wasm_minimal_protocol_send_result_to_host(__input_buffer, buffer_len);
     return 0;
 }

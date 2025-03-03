@@ -8,7 +8,9 @@
 #include <math.h>
 #include "emscripten.h"
 
+#ifndef PROTOCOL_FUNCTION
 #define PROTOCOL_FUNCTION __attribute__((import_module("typst_env"))) extern
+#endif
 
 PROTOCOL_FUNCTION void wasm_minimal_protocol_send_result_to_host(const uint8_t *ptr, size_t len);
 PROTOCOL_FUNCTION void wasm_minimal_protocol_write_args_to_buffer(uint8_t *ptr);
@@ -114,20 +116,16 @@ typedef struct ASTElement_t {
 } ASTElement;
 void free_ASTElement(ASTElement *s);
 
-typedef struct result_t {
-    char error;
-    int from;
-    int squiggle;
-    int to;
-    struct ASTElement_t result;
-} result;
-void free_result(result *s);
-int encode_result(const result *s);
-
 typedef struct parse_t {
     char* smiles;
 } parse;
 void free_parse(parse *s);
 int decode_parse(size_t buffer_len, parse *out);
+
+typedef struct result_t {
+    struct ASTElement_t result;
+} result;
+void free_result(result *s);
+int encode_result(const result *s);
 
 #endif
