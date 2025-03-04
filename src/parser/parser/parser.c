@@ -36,13 +36,13 @@ char peek(parser_ctx *ctx) {
 
 #define INVALID_ELEMENT (ASTElement){.type = -1}
 
-#define EXPECT_CHAR(char, ctx, elem)                                                               \
-    if (next(ctx) != char) {                                                                       \
+#define EXPECT_CHAR(char_, ctx, elem)                                                               \
+    if (next(ctx) != char_) {                                                                       \
         free_ASTElement(&elem);                                                                    \
         ctx->errored = true;                                                                       \
         ctx->error = malloc(sizeof(char) * 11);                                                    \
         ctx->error = strcpy(ctx->error, "Expected ");                                              \
-        ctx->error[9] = char;                                                                      \
+        ctx->error[9] = char_;                                                                      \
         ctx->error[10] = '\0';                                                                     \
         return INVALID_ELEMENT;                                                                    \
     }
@@ -54,8 +54,7 @@ char peek(parser_ctx *ctx) {
     }
 
 bool start_by(parser_ctx *ctx, const char *str) {
-    save_pos(ctx);
-    size_t i = 0;
+	size_t i = 0;
     while (!is_eof(ctx) && str[i] != '\0') {
         if (next(ctx) != str[i]) {
             restore_pos(ctx);
@@ -63,27 +62,28 @@ bool start_by(parser_ctx *ctx, const char *str) {
         }
         i++;
     }
-    restore_pos(ctx);
     return true;
 }
 
 bool is_digit(char c) {
-    return c >= '0' && c <= '9';
+	return c >= '0' && c <= '9';
 }
 
 ASTElement stringElement(parser_ctx *ctx, ASTElementType type, char strings[][6], size_t len) {
-    ASTElement elem = {
-        .type = type,
+	ASTElement elem = {
+		.type = type,
     };
     for (int i = 0; i < len; i++) {
+		save_pos(ctx);
         if (start_by(ctx, strings[i])) {
             elem.value = malloc(sizeof(char) * strlen(strings[i]));
             elem.value = strcpy(elem.value, strings[i]);
             return elem;
         }
+		restore_pos(ctx);
     }
     ctx->errored = true;
-    ctx->error = malloc(sizeof(char) * (len * 10 + 25));
+    ctx->error = malloc(sizeof(char) * (len * 10 + 25 + ctx->buffer_len));
     ctx->error = strcpy(ctx->error, "Expected one of ");
     for (int i = 0; i < len; i++) {
         ctx->error = strcat(ctx->error, strings[i]);
@@ -95,7 +95,8 @@ ASTElement stringElement(parser_ctx *ctx, ASTElementType type, char strings[][6]
 }
 
 ASTElement single_char(parser_ctx *ctx, ASTElementType type, char c) {
-    if (next(ctx) == c) {
+    if (peek(ctx) == c) {
+		next(ctx);
         ASTElement elem = {
             .type = type,
         };
@@ -213,7 +214,8 @@ ASTElement symbol(parser_ctx *ctx) {
 
 ASTElement chiral(parser_ctx *ctx) {
     ASTElement elem = chiral_(ctx);
-    if (strcmp(elem.value, "@OH") || strcmp(elem.value, "@TB")) {
+	CHECK_CTX(ctx, elem);
+    if (strcmp(elem.value, "@OH") == 0 || strcmp(elem.value, "@TB") == 0) {
         char d1 = next(ctx);
         char d2 = peek(ctx);
         if (d1 == 0 || !is_digit(d1)) {
@@ -304,12 +306,12 @@ ASTElement bracket_atom(parser_ctx *ctx) {
 }
 
 ASTElement atom(parser_ctx *ctx) {
-    ASTElement elem = aliphatic_organic(ctx);
+    ASTElement elem = option(ctx, aliphatic_organic);
     if (elem.type == -1) {
-        elem = aromatic_organic(ctx);
+        elem = option(ctx, aromatic_organic);
     }
     if (elem.type == -1) {
-        elem = star(ctx);
+        elem = option(ctx, star);
     }
     if (elem.type == -1) {
         return bracket_atom(ctx);
