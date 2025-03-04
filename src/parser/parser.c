@@ -1,6 +1,6 @@
 #include "ast/protocol.h"
 #include "parser/parser.h"
-
+EMSCRIPTEN_KEEPALIVE
 int parse_smiles(size_t buffer_len) {
     parse p;
     if (decode_parse(buffer_len, &p)) {
