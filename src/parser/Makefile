@@ -6,10 +6,10 @@ CFLAGS = -O2 --no-entry -sERROR_ON_UNDEFINED_SYMBOLS=0 -sFILESYSTEM=0 -sASSERTIO
 INCLUDE_FLAGS = -I"."
 
 
-parser.wasm: parser.c $(SOURCES) ast/protocol.c ast/protocol.h
-	$(CC) $(CFLAGS) parser.c $(SOURCES) -o parser.wasm $(INCLUDE_FLAGS)
-	wasi-stub --stub-function env:__syscall_unlinkat,env:__syscall_faccessat ./parser.wasm
-	mv ./"parser - stubbed.wasm" ./parser.wasm
+parser.wasm: smiles.c $(SOURCES) ast/protocol.c ast/protocol.h
+	$(CC) $(CFLAGS) smiles.c $(SOURCES) -o smiles.wasm $(INCLUDE_FLAGS)
+	wasi-stub --stub-function env:__syscall_unlinkat,env:__syscall_faccessat ./smiles.wasm
+	mv ./"smiles - stubbed.wasm" ./smiles.wasm
 
 all: parser.wasm test
 

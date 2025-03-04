@@ -192,9 +192,6 @@
     children: f_children,
   ), offset)
 }
-#let encode-parse(value) = {
-  encode-string(value.at("smiles"))
-}
 #let decode-result(bytes) = {
   let offset = 0
   let (f_result, size) = decode-ASTElement(bytes.slice(offset, bytes.len()))
@@ -202,4 +199,7 @@
   ((
     result: f_result,
   ), offset)
+}
+#let encode-parse(value) = {
+  encode-string(value.at("smiles"))
 }

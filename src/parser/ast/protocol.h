@@ -116,16 +116,16 @@ typedef struct ASTElement_t {
 } ASTElement;
 void free_ASTElement(ASTElement *s);
 
-typedef struct parse_t {
-    char* smiles;
-} parse;
-void free_parse(parse *s);
-int decode_parse(size_t buffer_len, parse *out);
-
 typedef struct result_t {
     struct ASTElement_t result;
 } result;
 void free_result(result *s);
 int encode_result(const result *s);
+
+typedef struct parse_t {
+    char* smiles;
+} parse;
+void free_parse(parse *s);
+int decode_parse(size_t buffer_len, parse *out);
 
 #endif

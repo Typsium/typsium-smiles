@@ -1,5 +1,13 @@
 #include "ast/protocol.h"
 #include "parser/parser.h"
+#include <stdio.h>
+
+#define DEBUG(fmt, ...)                                                                            \
+    char buf[1000];                                                                               \
+    sprintf(buf, fmt, __VA_ARGS__);                                                                \
+    wasm_minimal_protocol_send_result_to_host((uint8_t *)buf, strlen(buf)); \
+	return 1;
+
 EMSCRIPTEN_KEEPALIVE
 int parse_smiles(size_t buffer_len) {
     parse p;
@@ -10,7 +18,7 @@ int parse_smiles(size_t buffer_len) {
     }
     parser_ctx ctx = init_ctx(p.smiles, strlen(p.smiles));
     ASTElement elem = smile(&ctx);
-    free_parse(&p);
+	free_parse(&p);
     if (ctx.errored) {
         if (ctx.error) {
             wasm_minimal_protocol_send_result_to_host((uint8_t *)ctx.error, strlen(ctx.error));
