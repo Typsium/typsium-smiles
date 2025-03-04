@@ -77,7 +77,7 @@ ASTElement stringElement(parser_ctx *ctx, ASTElementType type, char strings[][6]
     for (int i = 0; i < len; i++) {
 		size_t pos = save_pos(ctx);
         if (start_by(ctx, strings[i])) {
-            elem.value = malloc(sizeof(char) * strlen(strings[i]));
+            elem.value = malloc(sizeof(char) * strlen(strings[i]) + 1);
             elem.value = strcpy(elem.value, strings[i]);
             return elem;
         }
@@ -107,11 +107,13 @@ ASTElement single_char(parser_ctx *ctx, ASTElementType type, char c) {
         return elem;
     }
     ctx->errored = true;
-    ctx->error = malloc(sizeof(char) * 25);
+    ctx->error = malloc(sizeof(char) * 28);
     ctx->error = strcpy(ctx->error, "Expected ");
-    ctx->error = strcat(ctx->error, &c);
+	char expected[] = {c, '\0'};
+    ctx->error = strcat(ctx->error, expected);
     ctx->error = strcat(ctx->error, ", got ");
-    ctx->error = strcat(ctx->error, ctx->buffer + ctx->buffer_pos);
+	expected[0] = peek(ctx);
+    ctx->error = strcat(ctx->error, expected);
     return INVALID_ELEMENT;
 }
 
@@ -278,7 +280,7 @@ ASTElement charge(parser_ctx *ctx) {
 }
 
 ASTElement class(parser_ctx *ctx) {
-    ASTElement elem = {.type = CLASS, .children = malloc(sizeof(ASTElement) * 1)};
+    ASTElement elem = {.type = CLASS, .children = malloc(sizeof(ASTElement))};
     EXPECT_CHAR(':', ctx, elem);
     elem.children[0] = number(ctx);
 	elem.children_len++;
@@ -323,22 +325,22 @@ ASTElement atom(parser_ctx *ctx) {
 ASTElement ringbond(parser_ctx *ctx) {
 	ASTElement elem = {
 		.type = RINGBOND,
-		.children = malloc(sizeof(ASTElement) * 4)
+		.children = malloc(sizeof(ASTElement) * 4),
+		.children_len = 2
 	};
 	elem.children[0] = option(ctx, bond);
-	elem.children_len++;
 	if (peek(ctx) == '%') {
 		elem.children[1] = mod(ctx);
-	} else {
-		elem.children[1] = INVALID_ELEMENT;
-	}
-	elem.children_len++;
-	elem.children[2] = digit(ctx);
-	CHECK_CTX(ctx, elem);
-	if (elem.children[1].type != -1) {
-		elem.children[3] = digit(ctx);
 		CHECK_CTX(ctx, elem);
+		elem.children[2] = digit(ctx);
 		elem.children_len++;
+		CHECK_CTX(ctx, elem);
+		elem.children[3] = digit(ctx);
+		elem.children_len++;
+		CHECK_CTX(ctx, elem);
+	} else {
+		elem.children[1] = digit(ctx);
+		CHECK_CTX(ctx, elem);
 	}
 	return elem;
 }
@@ -398,31 +400,38 @@ ASTElement branch(parser_ctx *ctx) {
 	return elem;
 }
 
-ASTElement chain(parser_ctx *ctx) {
+ASTElement chain_(parser_ctx *ctx) {
 	ASTElement elem = {
 		.type = CHAIN,
 		.children = malloc(sizeof(ASTElement) * 3)
 	};
-	elem.children[0] = option(ctx, branched_atom);
+	elem.children[0] = option(ctx, bond);
 	elem.children_len++;
-	if (elem.children[0].type != -1) {
-		return elem;
+	if (elem.children[0].type == -1) {
+		elem.children[0] = option(ctx, dot);
 	}
-	elem.children[0] = chain(ctx);
-	CHECK_CTX(ctx, elem);
-	elem.children[1] = option(ctx, dot);
-	elem.children_len++;
-	if (elem.children[1].type == -1) {
-		elem.children[1] = option(ctx, bond);
-	}
-	if (elem.children[1].type == -1) {
+	if (elem.children[0].type == -1) {
+		elem.children[0] = branched_atom(ctx);
+	} else {
 		elem.children[1] = branched_atom(ctx);
-		CHECK_CTX(ctx, elem);
-		return elem;
+		elem.children_len++;
 	}
-	elem.children[2] = branched_atom(ctx);
+	CHECK_CTX(ctx, elem);
+	elem.children[elem.children_len] = option(ctx, chain_);
+	elem.children_len++;
+	return elem;
+}
+
+ASTElement chain(parser_ctx *ctx) {
+	ASTElement elem = {
+		.type = CHAIN,
+		.children = malloc(sizeof(ASTElement) * 2)
+	};
+	elem.children[0] = branched_atom(ctx);
 	elem.children_len++;
 	CHECK_CTX(ctx, elem);
+	elem.children[1] = option(ctx, chain_);
+	elem.children_len++;
 	return elem;
 }
 
