@@ -468,6 +468,9 @@ ASTElement smile(parser_ctx *ctx) {
 		if (!is_terminator(ctx)) {
 			return INVALID_ELEMENT;
 		}
+		ctx->errored = false;
+		free(ctx->error);
+		elem.children_len--;
 	}
 	elem.children[1] = terminator(ctx);
 	elem.children_len++;
