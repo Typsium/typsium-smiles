@@ -4,6 +4,6 @@
 
 # SMILES Structures in Typst
 
-A Typst package for quickly displaying and formatting chemical structures and compounds. It used the [SMILES](opensmiles.org/opensmiles.html) format to represent chemical structures using [Alchemist](https://github.com/Typsium/alchemist).
+A Typst package for quickly displaying and formatting chemical structures and compounds. It used the [SMILES](http://opensmiles.org/opensmiles.html) format to represent chemical structures using [Alchemist](https://github.com/Typsium/alchemist).
 
 # Usage
