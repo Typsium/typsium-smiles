@@ -95,6 +95,11 @@ int main() {
 	ASTElement ast = smile(&ctx);
 	if (ctx.errored) {
 		printf("Error: %s\n", ctx.error);
+		printf("%s\n", test_string);
+		for (size_t i = 0; i < ctx.buffer_pos; i++) {
+			printf(" ");
+		}
+		printf("^\n");
 		return 1;
 	}
 	print_ast(&ast, "");

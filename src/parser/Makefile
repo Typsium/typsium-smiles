@@ -17,7 +17,7 @@ ast ast/protocol.c ast/protocol.h: ast/ast.prot
 	wasmpg ast/ast.prot -c ast -t .
 
 test: $(SOURCES) ast
-	gcc -g -O2 -Wall test.c $(SOURCES) -o test_parser $(INCLUDE_FLAGS) -I"./test/" -DTEST
+	gcc -g -Wall test.c $(SOURCES) -o test_parser $(INCLUDE_FLAGS) -I"./test/" -DTEST
 
 format:
 	clang-format -i -style=file *.c *.h
