@@ -6,8 +6,8 @@ CFLAGS = -O2 --no-entry -sERROR_ON_UNDEFINED_SYMBOLS=0 -sFILESYSTEM=0 -sASSERTIO
 INCLUDE_FLAGS = -I"."
 
 
-parser.wasm: $(SOURCES) ast/protocol.c ast/protocol.h
-	$(CC) $(CFLAGS) parser.c$(SOURCES) -o parser.wasm $(INCLUDE_FLAGS)
+parser.wasm: parser.c $(SOURCES) ast/protocol.c ast/protocol.h
+	$(CC) $(CFLAGS) parser.c $(SOURCES) -o parser.wasm $(INCLUDE_FLAGS)
 	wasi-stub --stub-function env:__syscall_unlinkat,env:__syscall_faccessat ./parser.wasm
 	mv ./"parser - stubbed.wasm" ./parser.wasm
 

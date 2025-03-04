@@ -160,6 +160,9 @@ ASTElement digit(parser_ctx *ctx) {
 }
 
 ASTElement option(parser_ctx *ctx, ASTElementParser parser) {
+	if (is_eof(ctx)) {
+		return INVALID_ELEMENT;
+	}
 	size_t pos = save_pos(ctx);
     ASTElement elem = parser(ctx);
     if (ctx->errored) {
@@ -435,8 +438,13 @@ ASTElement chain(parser_ctx *ctx) {
 	return elem;
 }
 
+bool is_terminator(parser_ctx *ctx){return is_eof(ctx) || peek(ctx) == ' ' || peek(ctx) == '\r' ||
+                                          peek(ctx) == '\n' || peek(ctx) == '\t' ||
+                                          peek(ctx) == '\0';
+										}
+
 ASTElement terminator(parser_ctx *ctx) {
-	if (is_eof(ctx) || peek(ctx) == ' ' || peek(ctx) == '\r' || peek(ctx) == '\n' || peek(ctx) == '\t' || peek(ctx) == '\0') {
+    if (is_terminator(ctx)) {
 		next(ctx);
 		return (ASTElement){
 			.type = TERMINATOR
@@ -453,12 +461,13 @@ ASTElement smile(parser_ctx *ctx) {
 		.type = SMILES,
 		.children = malloc(sizeof(ASTElement) * 2)
 	};
-	elem.children[0] = option(ctx, chain);
+	elem.children[0] = chain(ctx);
 	elem.children_len++;
-	if (elem.children[0].type == -1) {
-		elem.children[0] = terminator(ctx);
-		CHECK_CTX(ctx, elem);
-		return elem;
+	if (ctx->errored) {
+		ctx->buffer_pos = 0;
+		if (!is_terminator(ctx)) {
+			return INVALID_ELEMENT;
+		}
 	}
 	elem.children[1] = terminator(ctx);
 	elem.children_len++;

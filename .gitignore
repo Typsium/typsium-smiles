@@ -1,3 +1,4 @@
 src/parser/compile_commands.json
 .vscode/
 src/parser/test_parser
+lib.pdf
