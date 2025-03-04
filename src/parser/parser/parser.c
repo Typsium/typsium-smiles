@@ -34,7 +34,20 @@ char peek(parser_ctx *ctx) {
     return ctx->buffer[ctx->buffer_pos];
 }
 
-#define INVALID_ELEMENT (ASTElement){.type = -1}
+ASTElement new_ASTElement(int type, size_t nb_children) {
+	return (ASTElement) {
+		.type = type,
+		.value = NULL,
+		.children = nb_children == 0 ? NULL : malloc(sizeof(ASTElement) * nb_children),
+		.children_len = 0
+	};
+}
+
+bool is_invalid(const ASTElement *element) {
+	return element->type == -1;
+}
+
+#define INVALID_ELEMENT new_ASTElement(-1, 0);
 
 #define EXPECT_CHAR(char_, ctx, elem)                                                               \
     if (next(ctx) != char_) {                                                                       \
@@ -98,9 +111,7 @@ ASTElement stringElement(parser_ctx *ctx, ASTElementType type, char strings[][6]
 ASTElement single_char(parser_ctx *ctx, ASTElementType type, char c) {
     if (peek(ctx) == c) {
 		next(ctx);
-        ASTElement elem = {
-            .type = type,
-        };
+        ASTElement elem = new_ASTElement(type, 0);
         elem.value = malloc(sizeof(char) * 2);
         elem.value[0] = c;
         elem.value[1] = '\0';
@@ -118,9 +129,7 @@ ASTElement single_char(parser_ctx *ctx, ASTElementType type, char c) {
 }
 
 ASTElement number(parser_ctx *ctx) {
-    ASTElement elem = {
-        .type = NUMBER,
-    };
+    ASTElement elem = new_ASTElement(NUMBER, 0);
     char *value = malloc(sizeof(char) * 10);
     size_t i = 0;
     while (!is_eof(ctx) && is_digit(peek(ctx))) {
@@ -141,9 +150,7 @@ ASTElement number(parser_ctx *ctx) {
 }
 
 ASTElement digit(parser_ctx *ctx) {
-    ASTElement elem = {
-        .type = NUMBER,
-    };
+    ASTElement elem = new_ASTElement(NUMBER, 0);
     if (is_digit(peek(ctx))) {
         elem.value = malloc(sizeof(char) * 2);
         elem.value[0] = next(ctx);
@@ -211,10 +218,10 @@ SINGLE_CHAR(close_paren, CHAR, ')')
 
 ASTElement symbol(parser_ctx *ctx) {
     ASTElement elem = option(ctx, aromatic_symbols);
-    if (elem.type == -1) {
+    if (is_invalid(&elem)) {
         elem = option(ctx, star);
     }
-    if (elem.type == -1) {
+    if (is_invalid(&elem)) {
         return element_symbols(ctx);
     }
     return elem;
@@ -262,10 +269,10 @@ ASTElement hcount(parser_ctx *ctx) {
 
 ASTElement charge(parser_ctx *ctx) {
     ASTElement sign = option(ctx, minus);
-    if (sign.type == -1) {
+    if (is_invalid(&sign)) {
         sign = option(ctx, plus);
     }
-    if (sign.type == -1) {
+    if (is_invalid(&sign)) {
         ctx->errored = true;
         ctx->error = malloc(sizeof(char) * 25);
         strcpy(ctx->error, "Expected a sign, got ");
@@ -274,8 +281,8 @@ ASTElement charge(parser_ctx *ctx) {
         return INVALID_ELEMENT;
     }
 
-    ASTElement elem = {
-        .type = CHARGE, .children = malloc(sizeof(ASTElement) * 3), .children_len = 3};
+    ASTElement elem = new_ASTElement(CHARGE, 3);
+	elem.children_len = 3;
     elem.children[0] = sign;
     elem.children[1] = option(ctx, digit);
     elem.children[2] = option(ctx, digit);
@@ -283,7 +290,7 @@ ASTElement charge(parser_ctx *ctx) {
 }
 
 ASTElement class(parser_ctx *ctx) {
-    ASTElement elem = {.type = CLASS, .children = malloc(sizeof(ASTElement))};
+    ASTElement elem = new_ASTElement(CLASS, 1);
     EXPECT_CHAR(':', ctx, elem);
     elem.children[0] = number(ctx);
 	elem.children_len++;
@@ -292,7 +299,7 @@ ASTElement class(parser_ctx *ctx) {
 }
 
 ASTElement bracket_atom(parser_ctx *ctx) {
-    ASTElement elem = {.type = BRACKET_ATOM, .children = malloc(sizeof(ASTElement) * 6)};
+    ASTElement elem = new_ASTElement(BRACKET_ATOM, 6);
     EXPECT_CHAR('[', ctx, elem);
     elem.children[0] = option(ctx, number);
     elem.children_len++;
@@ -313,24 +320,21 @@ ASTElement bracket_atom(parser_ctx *ctx) {
 
 ASTElement atom(parser_ctx *ctx) {
     ASTElement elem = option(ctx, aliphatic_organic);
-    if (elem.type == -1) {
+    if (is_invalid(&elem)) {
         elem = option(ctx, aromatic_organic);
     }
-    if (elem.type == -1) {
+    if (is_invalid(&elem)) {
         elem = option(ctx, star);
     }
-    if (elem.type == -1) {
+    if (is_invalid(&elem)) {
         return bracket_atom(ctx);
     }
     return elem;
 }
 
 ASTElement ringbond(parser_ctx *ctx) {
-	ASTElement elem = {
-		.type = RINGBOND,
-		.children = malloc(sizeof(ASTElement) * 4),
-		.children_len = 2
-	};
+	ASTElement elem = new_ASTElement(RINGBOND, 4);
+	elem.children_len = 2;
 	elem.children[0] = option(ctx, bond);
 	if (peek(ctx) == '%') {
 		elem.children[1] = mod(ctx);
@@ -352,16 +356,13 @@ ASTElement chain(parser_ctx *ctx);
 ASTElement branch(parser_ctx *ctx);
 
 ASTElement branched_atom(parser_ctx *ctx) {
-	ASTElement element = {
-		.type = BRANCHED_ATOM,
-		.children = malloc(sizeof(ASTElement))
-	};
+	ASTElement element = new_ASTElement(BRANCHED_ATOM,  1);
 	element.children[0] = atom(ctx);
 	element.children_len++;
 	CHECK_CTX(ctx, element);
 	int capacity = 1;
 	bool check_ringbound = true;
-	while (element.children[element.children_len - 1].type != -1) {
+	while (!is_invalid(&element.children[element.children_len - 1])) {
 		if (element.children_len == capacity) {
 			capacity *= 2;
 			element.children = realloc(element.children, sizeof(ASTElement) * capacity);
@@ -372,28 +373,25 @@ ASTElement branched_atom(parser_ctx *ctx) {
 			element.children[element.children_len] = option(ctx, branch);
 		}
 		element.children_len++;
-		if (check_ringbound && element.children[element.children_len - 1].type == -1) {
-			check_ringbound = false;
+        if (check_ringbound && is_invalid(&element.children[element.children_len - 1])) {
+            check_ringbound = false;
 			element.children_len--;
-		}
-	}
+        }
+    }
 	element.children_len--;
 	return element;
 }
 
 
 ASTElement branch(parser_ctx *ctx) {
-	ASTElement elem = {
-		.type = BRANCH,
-		.children = malloc(sizeof(ASTElement) * 2)
-	};
+	ASTElement elem = new_ASTElement(BRANCH, 2);
 	EXPECT_CHAR('(', ctx, elem);
 	elem.children[0] = option(ctx, bond);
 	elem.children_len++;
-	if (elem.children[0].type == -1) {
+	if (is_invalid(&elem.children[0])) {
 		elem.children[0] = option(ctx, dot);
 	}
-	if (elem.children[0].type == -1) {
+	if (is_invalid(&elem.children[0])) {
 		elem.children[0] = chain(ctx);
 	} else {
 		elem.children[1] = chain(ctx);	
@@ -404,16 +402,13 @@ ASTElement branch(parser_ctx *ctx) {
 }
 
 ASTElement chain_(parser_ctx *ctx) {
-	ASTElement elem = {
-		.type = CHAIN,
-		.children = malloc(sizeof(ASTElement) * 3)
-	};
+	ASTElement elem = new_ASTElement(CHAIN, 3);
 	elem.children[0] = option(ctx, bond);
 	elem.children_len++;
-	if (elem.children[0].type == -1) {
+	if (is_invalid(&elem.children[0])) {
 		elem.children[0] = option(ctx, dot);
 	}
-	if (elem.children[0].type == -1) {
+	if (is_invalid(&elem.children[0])) {
 		elem.children[0] = branched_atom(ctx);
 	} else {
 		elem.children[1] = branched_atom(ctx);
@@ -426,10 +421,7 @@ ASTElement chain_(parser_ctx *ctx) {
 }
 
 ASTElement chain(parser_ctx *ctx) {
-	ASTElement elem = {
-		.type = CHAIN,
-		.children = malloc(sizeof(ASTElement) * 2)
-	};
+	ASTElement elem = new_ASTElement(CHAIN, 2);
 	elem.children[0] = branched_atom(ctx);
 	elem.children_len++;
 	CHECK_CTX(ctx, elem);
@@ -446,9 +438,7 @@ bool is_terminator(parser_ctx *ctx){return is_eof(ctx) || peek(ctx) == ' ' || pe
 ASTElement terminator(parser_ctx *ctx) {
     if (is_terminator(ctx)) {
 		next(ctx);
-		return (ASTElement){
-			.type = TERMINATOR
-		};
+		return new_ASTElement(TERMINATOR, 0);
 	}
 	ctx->errored = true;
 	ctx->error = malloc(sizeof(char) * 28);
@@ -457,10 +447,7 @@ ASTElement terminator(parser_ctx *ctx) {
 }
 
 ASTElement smile(parser_ctx *ctx) {
-	ASTElement elem = {
-		.type = SMILES,
-		.children = malloc(sizeof(ASTElement) * 2)
-	};
+	ASTElement elem = new_ASTElement(SMILES, 2);
 	elem.children[0] = chain(ctx);
 	elem.children_len++;
 	if (ctx->errored) {
@@ -472,7 +459,7 @@ ASTElement smile(parser_ctx *ctx) {
 		free(ctx->error);
 		elem.children_len--;
 	}
-	elem.children[1] = terminator(ctx);
+	elem.children[elem.children_len] = terminator(ctx);
 	elem.children_len++;
 	CHECK_CTX(ctx, elem);
 	return elem;
