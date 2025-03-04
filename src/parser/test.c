@@ -37,6 +37,27 @@ void print_astType(ASTElementType t) {
 		case CLASS:
 			printf("CLASS");
 			break;
+		case HCOUNT:
+			printf("HCOUNT");
+			break;
+		case RINGBOND:
+			printf("RINGBOND");
+			break;
+		case BRANCHED_ATOM:
+			printf("BRANCHED_ATOM");
+			break;
+		case BRANCH:
+			printf("BRANCH");
+			break;
+		case CHAIN:
+			printf("CHAIN");
+			break;
+		case TERMINATOR:
+			printf("TERMINATOR");
+			break;
+		case SMILES:
+			printf("SMILES");
+			break;
 		default:
 			printf("INVALID");
 			break;
@@ -69,9 +90,9 @@ void print_ast(const ASTElement *e, char *indent) {
 }
 
 int main() {
-	char test_string[] = "[3H@+2:8]";
-	parser_ctx ctx = init_ctx(test_string, sizeof(test_string));
-	ASTElement ast = atom(&ctx);
+    char test_string[] = "Oc1c(*)cccc1";
+    parser_ctx ctx = init_ctx(test_string, sizeof(test_string));
+	ASTElement ast = smile(&ctx);
 	if (ctx.errored) {
 		printf("Error: %s\n", ctx.error);
 		return 1;

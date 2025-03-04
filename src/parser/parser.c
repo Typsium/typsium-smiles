@@ -9,7 +9,7 @@ int parse_smiles(size_t buffer_len) {
         return 1;
     }
     parser_ctx ctx = init_ctx(p.smiles, buffer_len);
-    ASTElement elem = atom(&ctx);
+    ASTElement elem = smile(&ctx);
     free_parse(&p);
     if (ctx.errored) {
         if (ctx.error) {

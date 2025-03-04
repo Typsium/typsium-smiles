@@ -6,7 +6,6 @@
 typedef struct parser_ctx {
     size_t buffer_len;
     size_t buffer_pos;
-    size_t saved_pos;
     char *buffer;
     bool errored;
     char *error;
@@ -23,12 +22,19 @@ typedef enum ASTElementType {
     BRACKET_ATOM,
     CHARGE,
     CHIRAL,
-    CLASS
+    CLASS,
+	HCOUNT,
+	RINGBOND,
+	BRANCHED_ATOM,
+	BRANCH,
+	CHAIN,
+	TERMINATOR,
+	SMILES
 } ASTElementType;
 
 typedef ASTElement (*ASTElementParser)(parser_ctx *ctx);
 
 parser_ctx init_ctx(char *buffer, size_t buffer_len);
-ASTElement atom(parser_ctx *ctx);
+ASTElement smile(parser_ctx *ctx);
 
 #endif // PARSER_H

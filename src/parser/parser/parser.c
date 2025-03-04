@@ -6,12 +6,12 @@ parser_ctx init_ctx(char *buffer, size_t len) {
     return ctx;
 }
 
-void save_pos(parser_ctx *ctx) {
-    ctx->saved_pos = ctx->buffer_pos;
+size_t save_pos(parser_ctx *ctx) {
+    return ctx->buffer_pos;
 }
 
-void restore_pos(parser_ctx *ctx) {
-    ctx->buffer_pos = ctx->saved_pos;
+void restore_pos(parser_ctx *ctx, size_t pos) {
+    ctx->buffer_pos = pos;
 }
 
 bool is_eof(const parser_ctx *ctx) {
@@ -55,9 +55,10 @@ char peek(parser_ctx *ctx) {
 
 bool start_by(parser_ctx *ctx, const char *str) {
 	size_t i = 0;
+	size_t pos = save_pos(ctx);
     while (!is_eof(ctx) && str[i] != '\0') {
         if (next(ctx) != str[i]) {
-            restore_pos(ctx);
+            restore_pos(ctx, pos);
             return false;
         }
         i++;
@@ -74,13 +75,13 @@ ASTElement stringElement(parser_ctx *ctx, ASTElementType type, char strings[][6]
 		.type = type,
     };
     for (int i = 0; i < len; i++) {
-		save_pos(ctx);
+		size_t pos = save_pos(ctx);
         if (start_by(ctx, strings[i])) {
             elem.value = malloc(sizeof(char) * strlen(strings[i]));
             elem.value = strcpy(elem.value, strings[i]);
             return elem;
         }
-		restore_pos(ctx);
+		restore_pos(ctx, pos);
     }
     ctx->errored = true;
     ctx->error = malloc(sizeof(char) * (len * 10 + 25 + ctx->buffer_len));
@@ -157,8 +158,10 @@ ASTElement digit(parser_ctx *ctx) {
 }
 
 ASTElement option(parser_ctx *ctx, ASTElementParser parser) {
+	size_t pos = save_pos(ctx);
     ASTElement elem = parser(ctx);
     if (ctx->errored) {
+		restore_pos(ctx, pos);
         ctx->errored = false;
         free(ctx->error);
         return INVALID_ELEMENT;
@@ -236,12 +239,18 @@ ASTElement chiral(parser_ctx *ctx) {
 }
 
 ASTElement hcount(parser_ctx *ctx) {
-    ASTElement elem = hydrogen(ctx);
-    CHECK_CTX(ctx, elem);
+    ASTElement H = hydrogen(ctx);
+    CHECK_CTX(ctx, H);
+	ASTElement elem = {
+		.type = HCOUNT,
+		.children = malloc(sizeof(ASTElement) * 2),
+		.children_len = 1,
+	};
+	elem.children[0] = H;
     if (is_digit(peek(ctx))) {
-        elem.value = realloc(elem.value, sizeof(char) * 3);
-        elem.value[1] = next(ctx);
-        elem.value[2] = '\0';
+        elem.children[1] = digit(ctx);
+		CHECK_CTX(ctx, elem);
+		elem.children_len++;
     }
     return elem;
 }
@@ -259,29 +268,21 @@ ASTElement charge(parser_ctx *ctx) {
         ctx->error[24] = '\0';
         return INVALID_ELEMENT;
     }
-    ASTElement d1 = digit(ctx);
-    CHECK_CTX(ctx, d1);
-    ASTElement d2 = option(ctx, digit);
-    if (d2.type == -1) {
-        d2 = INVALID_ELEMENT;
-    }
+
     ASTElement elem = {
         .type = CHARGE, .children = malloc(sizeof(ASTElement) * 3), .children_len = 3};
     elem.children[0] = sign;
-    elem.children[1] = d1;
-    elem.children[2] = d2;
+    elem.children[1] = option(ctx, digit);
+    elem.children[2] = option(ctx, digit);
     return elem;
 }
 
 ASTElement class(parser_ctx *ctx) {
-    ASTElement col = colon(ctx);
-    CHECK_CTX(ctx, col);
-    ASTElement num = number(ctx);
-    CHECK_CTX(ctx, col);
-    ASTElement elem = {
-        .type = CLASS, .children = malloc(sizeof(ASTElement) * 2), .children_len = 2};
-    elem.children[0] = col;
-    elem.children[1] = num;
+    ASTElement elem = {.type = CLASS, .children = malloc(sizeof(ASTElement) * 1)};
+    EXPECT_CHAR(':', ctx, elem);
+    elem.children[0] = number(ctx);
+	elem.children_len++;
+    CHECK_CTX(ctx, elem);
     return elem;
 }
 
@@ -317,4 +318,141 @@ ASTElement atom(parser_ctx *ctx) {
         return bracket_atom(ctx);
     }
     return elem;
+}
+
+ASTElement ringbond(parser_ctx *ctx) {
+	ASTElement elem = {
+		.type = RINGBOND,
+		.children = malloc(sizeof(ASTElement) * 4)
+	};
+	elem.children[0] = option(ctx, bond);
+	elem.children_len++;
+	if (peek(ctx) == '%') {
+		elem.children[1] = mod(ctx);
+	} else {
+		elem.children[1] = INVALID_ELEMENT;
+	}
+	elem.children_len++;
+	elem.children[2] = digit(ctx);
+	CHECK_CTX(ctx, elem);
+	if (elem.children[1].type != -1) {
+		elem.children[3] = digit(ctx);
+		CHECK_CTX(ctx, elem);
+		elem.children_len++;
+	}
+	return elem;
+}
+
+ASTElement chain(parser_ctx *ctx);
+ASTElement branch(parser_ctx *ctx);
+
+ASTElement branched_atom(parser_ctx *ctx) {
+	ASTElement element = {
+		.type = BRANCHED_ATOM,
+		.children = malloc(sizeof(ASTElement))
+	};
+	element.children[0] = atom(ctx);
+	element.children_len++;
+	CHECK_CTX(ctx, element);
+	int capacity = 1;
+	bool check_ringbound = true;
+	while (element.children[element.children_len - 1].type != -1) {
+		if (element.children_len == capacity) {
+			capacity *= 2;
+			element.children = realloc(element.children, sizeof(ASTElement) * capacity);
+		}
+		if (check_ringbound) {
+			element.children[element.children_len] = option(ctx, ringbond);
+		} else {
+			element.children[element.children_len] = option(ctx, branch);
+		}
+		element.children_len++;
+		if (check_ringbound && element.children[element.children_len - 1].type == -1) {
+			check_ringbound = false;
+			element.children_len--;
+		}
+	}
+	element.children_len--;
+	return element;
+}
+
+
+ASTElement branch(parser_ctx *ctx) {
+	ASTElement elem = {
+		.type = BRANCH,
+		.children = malloc(sizeof(ASTElement) * 2)
+	};
+	EXPECT_CHAR('(', ctx, elem);
+	elem.children[0] = option(ctx, bond);
+	elem.children_len++;
+	if (elem.children[0].type == -1) {
+		elem.children[0] = option(ctx, dot);
+	}
+	if (elem.children[0].type == -1) {
+		elem.children[0] = chain(ctx);
+	} else {
+		elem.children[1] = chain(ctx);	
+	}
+	CHECK_CTX(ctx, elem);
+	EXPECT_CHAR(')', ctx, elem);
+	return elem;
+}
+
+ASTElement chain(parser_ctx *ctx) {
+	ASTElement elem = {
+		.type = CHAIN,
+		.children = malloc(sizeof(ASTElement) * 3)
+	};
+	elem.children[0] = option(ctx, branched_atom);
+	elem.children_len++;
+	if (elem.children[0].type != -1) {
+		return elem;
+	}
+	elem.children[0] = chain(ctx);
+	CHECK_CTX(ctx, elem);
+	elem.children[1] = option(ctx, dot);
+	elem.children_len++;
+	if (elem.children[1].type == -1) {
+		elem.children[1] = option(ctx, bond);
+	}
+	if (elem.children[1].type == -1) {
+		elem.children[1] = branched_atom(ctx);
+		CHECK_CTX(ctx, elem);
+		return elem;
+	}
+	elem.children[2] = branched_atom(ctx);
+	elem.children_len++;
+	CHECK_CTX(ctx, elem);
+	return elem;
+}
+
+ASTElement terminator(parser_ctx *ctx) {
+	if (is_eof(ctx) || peek(ctx) == ' ' || peek(ctx) == '\r' || peek(ctx) == '\n' || peek(ctx) == '\t' || peek(ctx) == '\0') {
+		next(ctx);
+		return (ASTElement){
+			.type = TERMINATOR
+		};
+	}
+	ctx->errored = true;
+	ctx->error = malloc(sizeof(char) * 28);
+	strcpy(ctx->error, "Expected end of expression");
+	return INVALID_ELEMENT;
+}
+
+ASTElement smile(parser_ctx *ctx) {
+	ASTElement elem = {
+		.type = SMILES,
+		.children = malloc(sizeof(ASTElement) * 2)
+	};
+	elem.children[0] = option(ctx, chain);
+	elem.children_len++;
+	if (elem.children[0].type == -1) {
+		elem.children[0] = terminator(ctx);
+		CHECK_CTX(ctx, elem);
+		return elem;
+	}
+	elem.children[1] = terminator(ctx);
+	elem.children_len++;
+	CHECK_CTX(ctx, elem);
+	return elem;
 }
