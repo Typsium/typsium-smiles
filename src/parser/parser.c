@@ -8,7 +8,7 @@ int parse_smiles(size_t buffer_len) {
         wasm_minimal_protocol_send_result_to_host((uint8_t *)error, strlen(error));
         return 1;
     }
-    parser_ctx ctx = init_ctx(p.smiles, buffer_len);
+    parser_ctx ctx = init_ctx(p.smiles, strlen(p.smiles));
     ASTElement elem = smile(&ctx);
     free_parse(&p);
     if (ctx.errored) {
