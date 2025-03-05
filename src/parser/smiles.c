@@ -21,7 +21,16 @@ int parse_smiles(size_t buffer_len) {
 	free_parse(&p);
     if (ctx.errored) {
         if (ctx.error) {
-            wasm_minimal_protocol_send_result_to_host((uint8_t *)ctx.error, strlen(ctx.error));
+			char *error = malloc(strlen(ctx.error) + strlen(p.smiles) * 2 + 20);
+			sprintf(error, "Failed to parse: %s\n%s\n", ctx.error, p.smiles);
+			size_t len = strlen(error);
+			for (int i = 0; i < ctx.buffer_pos; i++) {
+				error[len++] = ' ';
+			}
+			error[len++] = '^';
+			error[len] = '\0';
+		
+            wasm_minimal_protocol_send_result_to_host((uint8_t *)error, len);
             free(ctx.error);
         } else {
             char *error = "Failed to parse";
