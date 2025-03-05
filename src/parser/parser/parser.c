@@ -83,7 +83,7 @@ bool is_digit(char c) {
 	return c >= '0' && c <= '9';
 }
 
-ASTElement stringElement(parser_ctx *ctx, ASTElementType type, char strings[][6], size_t len) {
+ASTElement stringElement(parser_ctx *ctx, ASTElementType type, const char strings[][5], size_t len) {
 	ASTElement elem = {
 		.type = type,
     };
@@ -182,9 +182,9 @@ ASTElement option(parser_ctx *ctx, ASTElementParser parser) {
 }
 
 #define STRING(name, type, ...)                                                                    \
-    char name##_strings[][6] = {__VA_ARGS__};                                                      \
-    ASTElement name(parser_ctx *ctx) {                                                             \
-        return stringElement(ctx, type, name##_strings, sizeof(name##_strings) / sizeof(char *));  \
+	const char name##_strings[][5] = {__VA_ARGS__};                                                \
+	ASTElement name(parser_ctx *ctx) {                                                             \
+        return stringElement(ctx, type, name##_strings, sizeof(name##_strings) / sizeof(name##_strings[0]));  \
     }
 
 #define SINGLE_CHAR(name, type, c)                                                                 \

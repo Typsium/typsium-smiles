@@ -62,6 +62,7 @@ void print_astType(ASTElementType t) {
 			printf("INVALID");
 			break;
 	}
+	printf(" (%d)", t);
 }
 
 void print_ast(const ASTElement *e, char *indent) {
