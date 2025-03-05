@@ -1,10 +1,9 @@
 #ifndef WASM_H
 #define WASM_H
-#include <stdio.h>
 #include <stdint.h>
-#include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
-
+#include <string.h>
 
 uint8_t buffer[] = {0x00};
 
