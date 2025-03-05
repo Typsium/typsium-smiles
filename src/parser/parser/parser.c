@@ -401,33 +401,38 @@ ASTElement branch(parser_ctx *ctx) {
 	return elem;
 }
 
-ASTElement chain_(parser_ctx *ctx) {
-	ASTElement elem = new_ASTElement(CHAIN, 3);
-	elem.children[0] = option(ctx, bond);
-	elem.children_len++;
-	if (is_invalid(&elem.children[0])) {
-		elem.children[0] = option(ctx, dot);
+ASTElement chain_(parser_ctx *ctx, ASTElement *chain, size_t cap) {
+	if (chain->children_len + 2 >= cap) {
+		cap *= 2;
+		chain->children = realloc(chain->children, sizeof(ASTElement) * cap);
 	}
-	if (is_invalid(&elem.children[0])) {
-		elem.children[0] = branched_atom(ctx);
+
+	chain->children_len++;
+	chain->children[chain->children_len - 1] = option(ctx, bond);
+	if (is_invalid(&chain->children[chain->children_len - 1])) {
+		chain->children[chain->children_len - 1] = option(ctx, dot);
+	}
+	if (is_invalid(&chain->children[chain->children_len - 1])) {
+		chain->children[chain->children_len - 1] = option(ctx, branched_atom);
+		if (is_invalid(&chain->children[chain->children_len - 1])) {
+			chain->children_len--;
+			return *chain;
+		}
 	} else {
-		elem.children[1] = branched_atom(ctx);
-		elem.children_len++;
+		chain->children_len++;
+		chain->children[chain->children_len - 1] = branched_atom(ctx);
+		CHECK_CTX(ctx, *chain);
 	}
-	CHECK_CTX(ctx, elem);
-	elem.children[elem.children_len] = option(ctx, chain_);
-	elem.children_len++;
-	return elem;
+
+	return chain_(ctx, chain, cap);
 }
 
 ASTElement chain(parser_ctx *ctx) {
-	ASTElement elem = new_ASTElement(CHAIN, 2);
+	ASTElement elem = new_ASTElement(CHAIN, 1);
 	elem.children[0] = branched_atom(ctx);
 	elem.children_len++;
 	CHECK_CTX(ctx, elem);
-	elem.children[1] = option(ctx, chain_);
-	elem.children_len++;
-	return elem;
+	return chain_(ctx, &elem, 1);
 }
 
 bool is_terminator(parser_ctx *ctx){return is_eof(ctx) || peek(ctx) == ' ' || peek(ctx) == '\r' ||
