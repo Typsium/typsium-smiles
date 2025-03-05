@@ -90,9 +90,12 @@ void print_ast(const ASTElement *e, char *indent) {
     printf("%s}", indent);
 }
 
-int main() {
-    char test_string[] = "Oc1c(*)cccc1";
-    parser_ctx ctx = init_ctx(test_string, sizeof(test_string));
+int main(int argc, char **argv) {
+	char *test_string = "[Rh-](Cl)(Cl)(Cl)(Cl)$[Rh-](Cl)(Cl)(Cl)Cl";
+	if (argc == 2) {
+		test_string = argv[1];
+	}
+    parser_ctx ctx = init_ctx(test_string, strlen(test_string));
     ASTElement ast = smile(&ctx);
     if (ctx.errored) {
         printf("Error: %s\n", ctx.error);

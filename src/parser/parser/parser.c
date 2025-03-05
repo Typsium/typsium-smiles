@@ -348,6 +348,7 @@ ASTElement atom(parser_ctx *ctx) {
     }
     if (is_invalid(&elem)) {
         error(ctx, "Expected an atom");
+		return INVALID_ELEMENT;
     }
     return elem;
 }
@@ -465,7 +466,6 @@ bool is_terminator(parser_ctx *ctx) {
 
 ASTElement terminator(parser_ctx *ctx) {
     if (is_terminator(ctx)) {
-        next(ctx);
         return new_ASTElement(TERMINATOR, 0);
     }
     error(ctx, "Expected end of expression");
@@ -484,6 +484,7 @@ ASTElement smile(parser_ctx *ctx) {
             return INVALID_ELEMENT;
         }
         free(ctx->error);
+		ctx->errored = false;
         elem.children_len--;
     }
     elem.children[elem.children_len] = terminator(ctx);
