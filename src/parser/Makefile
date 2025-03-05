@@ -20,7 +20,7 @@ test: $(SOURCES) ast
 	gcc -g -Wall test.c $(SOURCES) -o test_parser $(INCLUDE_FLAGS) -I"./test/" -DTEST
 
 format:
-	clang-format -i -style=file *.c *.h
+	clang-format -i -style=file *.c parser/*.h parser/*.c
 
 clean:
 	rm -f *.wasm \

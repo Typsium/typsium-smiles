@@ -9,7 +9,7 @@ typedef struct parser_ctx {
     char *buffer;
     bool errored;
     char *error;
-	int no_error_message;
+    int no_error_message;
 } parser_ctx;
 
 typedef enum ASTElementType {
@@ -24,13 +24,13 @@ typedef enum ASTElementType {
     CHARGE,
     CHIRAL,
     CLASS,
-	HCOUNT,
-	RINGBOND,
-	BRANCHED_ATOM,
-	BRANCH,
-	CHAIN,
-	TERMINATOR,
-	SMILES
+    HCOUNT,
+    RINGBOND,
+    BRANCHED_ATOM,
+    BRANCH,
+    CHAIN,
+    TERMINATOR,
+    SMILES
 } ASTElementType;
 
 typedef ASTElement (*ASTElementParser)(parser_ctx *ctx);
