@@ -182,15 +182,24 @@
   let offset = 0
   let (f_type, size) = decode-int(bytes.slice(offset, bytes.len()))
   offset += size
+  let (f_from, size) = decode-int(bytes.slice(offset, bytes.len()))
+  offset += size
+  let (f_to, size) = decode-int(bytes.slice(offset, bytes.len()))
+  offset += size
   let (f_value, size) = decode-string(bytes.slice(offset, bytes.len()))
   offset += size
   let (f_children, size) = decode-list(bytes.slice(offset, bytes.len()), decode-ASTElement)
   offset += size
   ((
     type: f_type,
+    from: f_from,
+    to: f_to,
     value: f_value,
     children: f_children,
   ), offset)
+}
+#let encode-parse(value) = {
+  encode-string(value.at("smiles"))
 }
 #let decode-result(bytes) = {
   let offset = 0
@@ -199,7 +208,4 @@
   ((
     result: f_result,
   ), offset)
-}
-#let encode-parse(value) = {
-  encode-string(value.at("smiles"))
 }

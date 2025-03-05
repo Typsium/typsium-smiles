@@ -1,5 +1,7 @@
 struct ASTElement {
 	int type;
+	int from;
+	int to;
 	string value;
 	ASTElement children[];
 }
