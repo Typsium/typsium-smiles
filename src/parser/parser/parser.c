@@ -50,7 +50,7 @@ bool is_invalid(const ASTElement *element) {
 #define INVALID_ELEMENT new_ASTElement(-1, 0);
 
 #define EXPECT_CHAR(char_, ctx, elem)                                                               \
-    if (next(ctx) != char_) {                                                                       \
+    if (peek(ctx) != char_) {                                                                       \
         free_ASTElement(&elem);                                                                    \
         ctx->errored = true;                                                                       \
         ctx->error = malloc(sizeof(char) * 11);                                                    \
@@ -58,7 +58,8 @@ bool is_invalid(const ASTElement *element) {
         ctx->error[9] = char_;                                                                      \
         ctx->error[10] = '\0';                                                                     \
         return INVALID_ELEMENT;                                                                    \
-    }
+    } \
+	next(ctx);
 
 #define CHECK_CTX(ctx, elem)                                                                       \
     if (ctx->errored) {                                                                            \
@@ -192,17 +193,17 @@ ASTElement option(parser_ctx *ctx, ASTElementParser parser) {
         return single_char(ctx, type, c);                                                          \
     }
 
-STRING(aliphatic_organic, ALIPHATIC_ORGANIC, "B", "C", "N", "O", "P", "S", "F", "Cl", "Br", "I")
+STRING(aliphatic_organic, ALIPHATIC_ORGANIC, "Br", "Cl", "N", "O", "P", "S", "F", "C", "B", "I")
 STRING(aromatic_organic, AROMATIC_ORGANIC, "b", "c", "n", "o", "s", "p")
-STRING(element_symbols, ELEMENT_SYMBOL, "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na",
-       "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co",
-       "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo",
-       "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "Hf",
-       "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr",
-       "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Fl", "Lv", "La", "Ce", "Pr",
-       "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Ac", "Th", "Pa",
-       "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr")
-STRING(aromatic_symbols, AROMATIC_SYMBOL, "b", "c", "n", "o", "p", "s", "se", "as")
+STRING(element_symbols, ELEMENT_SYMBOL, "He", "Li", "Be", "Bi", "Ne", "Na", "Mg", "Al", "Si", "Cl",
+       "Ar", "Ca", "Sc", "Ti", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se",
+       "Br", "Kr", "Rb", "Sr", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn",
+       "Sb", "Te", "Xe", "Cs", "Ba", "Hf", "Ta", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb",
+       "Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Fl",
+       "Lv", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb",
+       "Lu", "Ac", "Th", "Pa", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr",
+       "H", "C", "N", "O", "F", "P", "S", "K", "V", "Y", "I", "W", "B", "U")
+STRING(aromatic_symbols, AROMATIC_SYMBOL, "se", "as", "b", "c", "n", "o", "p", "s")
 STRING(bond, BOND, "-", "=", "#", "$", ":", "/", "\\")
 STRING(chiral_, CHIRAL, "@", "@@", "@TH1", "@TH2", "@AL1", "@AL2", "@SP1", "@SP2", "@SP3", "@TB",
        "@OH")
