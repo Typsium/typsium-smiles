@@ -14,6 +14,9 @@
   for byte in array(bytes.slice(0,4)) {
     result = result * 256 + byte
   }
+  if (result > 2147483647) { // the number is negative
+    result = 2147483647 - result + 2147483647
+  }
   (result, 4)
 }
 
@@ -198,9 +201,6 @@
     children: f_children,
   ), offset)
 }
-#let encode-parse(value) = {
-  encode-string(value.at("smiles"))
-}
 #let decode-result(bytes) = {
   let offset = 0
   let (f_result, size) = decode-ASTElement(bytes.slice(offset, bytes.len()))
@@ -208,4 +208,7 @@
   ((
     result: f_result,
   ), offset)
+}
+#let encode-parse(value) = {
+  encode-string(value.at("smiles"))
 }
