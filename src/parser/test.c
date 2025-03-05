@@ -101,6 +101,8 @@ int main() {
 			printf(" ");
 		}
 		printf("^\n");
+		free(ctx.error);
+		free_ASTElement(&ast);
 		return 1;
 	}
 	print_ast(&ast, "");

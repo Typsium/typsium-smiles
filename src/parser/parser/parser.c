@@ -1,8 +1,10 @@
 #include "parser/parser.h"
+#include <stdio.h>
+#include <stdarg.h>
 
 parser_ctx init_ctx(char *buffer, size_t len) {
     parser_ctx ctx = {
-        .buffer = buffer, .buffer_len = len, .buffer_pos = 0, .errored = false, .error = NULL};
+        .buffer = buffer, .buffer_len = len, .buffer_pos = 0, .errored = false, .error = NULL, .no_error_message = 0};
     return ctx;
 }
 
@@ -15,7 +17,7 @@ void restore_pos(parser_ctx *ctx, size_t pos) {
 }
 
 bool is_eof(const parser_ctx *ctx) {
-    return ctx->buffer_pos >= ctx->buffer_len || ctx->errored;
+    return ctx->buffer_pos >= ctx->buffer_len;
 }
 
 char next(parser_ctx *ctx) {
@@ -43,6 +45,31 @@ ASTElement new_ASTElement(int type, size_t nb_children) {
 	};
 }
 
+void error(parser_ctx *ctx, char *fmt, ...) {
+	ctx->errored = true;
+	if (ctx->error != NULL) {
+		free(ctx->error);
+	}
+	if (ctx->no_error_message > 0) {
+		ctx->error = NULL;
+		return;
+	}
+	va_list args;
+	va_start(args, fmt);
+	int size = vsnprintf(NULL, 0, fmt, args);
+	va_end(args);
+	if (size < 0) {
+		ctx->error = NULL;
+	}
+	ctx->error = malloc(sizeof(char) * size + 1);
+	va_start(args, fmt);
+	if (vsprintf(ctx->error, fmt, args) < 0) {
+		free(ctx->error);
+		ctx->error = NULL;
+	}
+	va_end(args);
+}
+
 bool is_invalid(const ASTElement *element) {
 	return element->type == -1;
 }
@@ -52,11 +79,7 @@ bool is_invalid(const ASTElement *element) {
 #define EXPECT_CHAR(char_, ctx, elem)                                                               \
     if (peek(ctx) != char_) {                                                                       \
         free_ASTElement(&elem);                                                                    \
-        ctx->errored = true;                                                                       \
-        ctx->error = malloc(sizeof(char) * 11);                                                    \
-        ctx->error = strcpy(ctx->error, "Expected ");                                              \
-        ctx->error[9] = char_;                                                                      \
-        ctx->error[10] = '\0';                                                                     \
+		error(ctx, "Expected %c, got %c", char_, peek(ctx));                                \
         return INVALID_ELEMENT;                                                                    \
     } \
 	next(ctx);
@@ -85,9 +108,7 @@ bool is_digit(char c) {
 }
 
 ASTElement stringElement(parser_ctx *ctx, ASTElementType type, const char strings[][5], size_t len) {
-	ASTElement elem = {
-		.type = type,
-    };
+	ASTElement elem = new_ASTElement(type, 0);
     for (int i = 0; i < len; i++) {
 		size_t pos = save_pos(ctx);
         if (start_by(ctx, strings[i])) {
@@ -97,16 +118,21 @@ ASTElement stringElement(parser_ctx *ctx, ASTElementType type, const char string
         }
 		restore_pos(ctx, pos);
     }
-    ctx->errored = true;
-    ctx->error = malloc(sizeof(char) * (len * 10 + 25 + ctx->buffer_len));
-    ctx->error = strcpy(ctx->error, "Expected one of ");
-    for (int i = 0; i < len; i++) {
-        ctx->error = strcat(ctx->error, strings[i]);
-        ctx->error = strcat(ctx->error, ", ");
-    }
-    ctx->error = strcat(ctx->error, "got ");
-    ctx->error = strcat(ctx->error, ctx->buffer + ctx->buffer_pos);
-    return INVALID_ELEMENT;
+	char *concat = malloc(sizeof(char) * len * 7 + 1);
+	size_t clen = 0;
+	for (int i = 0; i < len; i++) {
+		strcpy(concat + clen, strings[i]);
+		clen += strlen(strings[i]);
+		if (i != len - 1) {
+			concat[clen++] = ',';
+			concat[clen++] = ' ';
+		}
+	}
+	concat[clen] = '\0';
+
+	error(ctx, "Expected one of %s, got %s", concat, ctx->buffer + ctx->buffer_pos);
+	free(concat);
+	return INVALID_ELEMENT;
 }
 
 ASTElement single_char(parser_ctx *ctx, ASTElementType type, char c) {
@@ -118,31 +144,25 @@ ASTElement single_char(parser_ctx *ctx, ASTElementType type, char c) {
         elem.value[1] = '\0';
         return elem;
     }
-    ctx->errored = true;
-    ctx->error = malloc(sizeof(char) * 28);
-    ctx->error = strcpy(ctx->error, "Expected ");
-	char expected[] = {c, '\0'};
-    ctx->error = strcat(ctx->error, expected);
-    ctx->error = strcat(ctx->error, ", got ");
-	expected[0] = peek(ctx);
-    ctx->error = strcat(ctx->error, expected);
+	error(ctx, "Expected %c, got %c", c, peek(ctx));
     return INVALID_ELEMENT;
 }
 
 ASTElement number(parser_ctx *ctx) {
     ASTElement elem = new_ASTElement(NUMBER, 0);
-    char *value = malloc(sizeof(char) * 10);
+    char *value = malloc(sizeof(char) * 5);
+	int cap = 4;
     size_t i = 0;
     while (!is_eof(ctx) && is_digit(peek(ctx))) {
+		if (i == cap) {
+			cap *= 2;
+			value = realloc(value, cap);
+		}
         value[i++] = next(ctx);
     }
     if (i == 0) {
-        ctx->errored = true;
-        ctx->error = malloc(sizeof(char) * 25);
-        strcpy(ctx->error, "Expected a number, got ");
-        ctx->error[23] = peek(ctx);
-        ctx->error[24] = '\0';
-        elem.value = NULL;
+		error(ctx, "Expected a number, got %c", peek(ctx));
+		free(value);
         return INVALID_ELEMENT;
     }
     value[i] = '\0';
@@ -158,12 +178,7 @@ ASTElement digit(parser_ctx *ctx) {
         elem.value[1] = '\0';
         return elem;
     }
-    ctx->errored = true;
-    ctx->error = malloc(sizeof(char) * 25);
-    strcpy(ctx->error, "Expected a digit, got ");
-    ctx->error[23] = peek(ctx);
-    ctx->error[24] = '\0';
-    elem.value = NULL;
+	error(ctx, "Expected a digit, got %c", peek(ctx));
     return INVALID_ELEMENT;
 }
 
@@ -172,11 +187,14 @@ ASTElement option(parser_ctx *ctx, ASTElementParser parser) {
 		return INVALID_ELEMENT;
 	}
 	size_t pos = save_pos(ctx);
+	ctx->no_error_message++;
     ASTElement elem = parser(ctx);
+	ctx->no_error_message--;
     if (ctx->errored) {
 		restore_pos(ctx, pos);
         ctx->errored = false;
         free(ctx->error);
+		free_ASTElement(&elem);
         return INVALID_ELEMENT;
     }
     return elem;
@@ -235,11 +253,7 @@ ASTElement chiral(parser_ctx *ctx) {
         char d1 = next(ctx);
         char d2 = peek(ctx);
         if (d1 == 0 || !is_digit(d1)) {
-            ctx->errored = true;
-            ctx->error = malloc(sizeof(char) * 25);
-            strcpy(ctx->error, "Expected a digit, got ");
-            ctx->error[23] = d1;
-            ctx->error[24] = '\0';
+            return digit(ctx);
         }
         elem.value[3] = d1;
         if (is_digit(d2)) {
@@ -274,11 +288,8 @@ ASTElement charge(parser_ctx *ctx) {
         sign = option(ctx, plus);
     }
     if (is_invalid(&sign)) {
-        ctx->errored = true;
-        ctx->error = malloc(sizeof(char) * 25);
-        strcpy(ctx->error, "Expected a sign, got ");
-        ctx->error[23] = peek(ctx);
-        ctx->error[24] = '\0';
+		error(ctx, "Expected a sign (- or +), got %c", peek(ctx));
+		free_ASTElement(&sign);
         return INVALID_ELEMENT;
     }
 
@@ -328,8 +339,11 @@ ASTElement atom(parser_ctx *ctx) {
         elem = option(ctx, star);
     }
     if (is_invalid(&elem)) {
-        return bracket_atom(ctx);
+        elem = option(ctx, bracket_atom);
     }
+	if (is_invalid(&elem)) {
+		error(ctx, "Expected an atom");
+	}
     return elem;
 }
 
@@ -405,25 +419,29 @@ ASTElement branch(parser_ctx *ctx) {
 ASTElement chain_(parser_ctx *ctx, ASTElement *chain, size_t cap) {
 	if (chain->children_len + 2 >= cap) {
 		cap *= 2;
+		if (cap <= 2) {
+			cap = 3;
+		}
 		chain->children = realloc(chain->children, sizeof(ASTElement) * cap);
 	}
 
-	chain->children_len++;
-	chain->children[chain->children_len - 1] = option(ctx, bond);
-	if (is_invalid(&chain->children[chain->children_len - 1])) {
-		chain->children[chain->children_len - 1] = option(ctx, dot);
+	chain->children[chain->children_len] = option(ctx, bond);
+	if (is_invalid(&chain->children[chain->children_len])) {
+		chain->children[chain->children_len] = option(ctx, dot);
 	}
-	if (is_invalid(&chain->children[chain->children_len - 1])) {
-		chain->children[chain->children_len - 1] = option(ctx, branched_atom);
-		if (is_invalid(&chain->children[chain->children_len - 1])) {
-			chain->children_len--;
+	if (is_invalid(&chain->children[chain->children_len])) {
+		chain->children[chain->children_len] = option(ctx, branched_atom);
+		if (is_invalid(&chain->children[chain->children_len])) {
 			return *chain;
 		}
-	} else {
-		chain->children_len++;
-		chain->children[chain->children_len - 1] = branched_atom(ctx);
-		CHECK_CTX(ctx, *chain);
+        chain->children_len++;
+        return chain_(ctx, chain, cap);
 	}
+
+	chain->children_len++;
+	chain->children[chain->children_len] = branched_atom(ctx);
+	chain->children_len++;
+	CHECK_CTX(ctx, *chain);
 
 	return chain_(ctx, chain, cap);
 }
@@ -446,9 +464,7 @@ ASTElement terminator(parser_ctx *ctx) {
 		next(ctx);
 		return new_ASTElement(TERMINATOR, 0);
 	}
-	ctx->errored = true;
-	ctx->error = malloc(sizeof(char) * 28);
-	strcpy(ctx->error, "Expected end of expression");
+	error(ctx, "Expected end of expression");
 	return INVALID_ELEMENT;
 }
 
@@ -457,11 +473,12 @@ ASTElement smile(parser_ctx *ctx) {
 	elem.children[0] = chain(ctx);
 	elem.children_len++;
 	if (ctx->errored) {
+		size_t pos = save_pos(ctx);
 		ctx->buffer_pos = 0;
 		if (!is_terminator(ctx)) {
+			restore_pos(ctx, pos);
 			return INVALID_ELEMENT;
 		}
-		ctx->errored = false;
 		free(ctx->error);
 		elem.children_len--;
 	}

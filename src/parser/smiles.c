@@ -32,6 +32,7 @@ int parse_smiles(size_t buffer_len) {
 		
             wasm_minimal_protocol_send_result_to_host((uint8_t *)error, len);
             free(ctx.error);
+			free(error);
         } else {
             char *error = "Failed to parse";
             wasm_minimal_protocol_send_result_to_host((uint8_t *)error, strlen(error));

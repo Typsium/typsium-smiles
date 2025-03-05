@@ -9,6 +9,7 @@ typedef struct parser_ctx {
     char *buffer;
     bool errored;
     char *error;
+	int no_error_message;
 } parser_ctx;
 
 typedef enum ASTElementType {
