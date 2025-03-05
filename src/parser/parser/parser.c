@@ -75,8 +75,8 @@ void error(parser_ctx *ctx, char *fmt, ...) {
     va_end(args);
 }
 
-bool is_invalid(const ASTElement *element) {
-    return element->type == -1;
+bool is_invalid(const ASTElement *elem) {
+    return elem->type == -1;
 }
 
 #define INVALID_ELEMENT new_ASTElement(-1, 0, 0);
@@ -295,6 +295,7 @@ ASTElement hcount(parser_ctx *ctx) {
 }
 
 ASTElement charge(parser_ctx *ctx) {
+	size_t start = save_pos(ctx);
     ASTElement sign = option(ctx, minus);
     if (is_invalid(&sign)) {
         sign = option(ctx, plus);
@@ -305,7 +306,7 @@ ASTElement charge(parser_ctx *ctx) {
         return INVALID_ELEMENT;
     }
 
-    ASTElement elem = new_ASTElement(CHARGE, 3, ctx->buffer_pos);
+    ASTElement elem = new_ASTElement(CHARGE, 3, start);
     elem.children_len = 3;
     elem.children[0] = sign;
     elem.children[1] = option(ctx, digit);
@@ -384,30 +385,30 @@ ASTElement chain(parser_ctx *ctx);
 ASTElement branch(parser_ctx *ctx);
 
 ASTElement branched_atom(parser_ctx *ctx) {
-    ASTElement element = new_ASTElement(BRANCHED_ATOM, 1, ctx->buffer_pos);
-    element.children[0] = atom(ctx);
-    element.children_len++;
-    CHECK_CTX(ctx, element);
+    ASTElement elem = new_ASTElement(BRANCHED_ATOM, 1, ctx->buffer_pos);
+    elem.children[0] = atom(ctx);
+    elem.children_len++;
+    CHECK_CTX(ctx, elem);
     int capacity = 1;
     bool check_ringbound = true;
-    while (!is_invalid(&element.children[element.children_len - 1])) {
-        if (element.children_len == capacity) {
+    while (!is_invalid(&elem.children[elem.children_len - 1])) {
+        if (elem.children_len == capacity) {
             capacity *= 2;
-            element.children = realloc(element.children, sizeof(ASTElement) * capacity);
+            elem.children = realloc(elem.children, sizeof(ASTElement) * capacity);
         }
         if (check_ringbound) {
-            element.children[element.children_len] = option(ctx, ringbond);
+            elem.children[elem.children_len] = option(ctx, ringbond);
         } else {
-            element.children[element.children_len] = option(ctx, branch);
+            elem.children[elem.children_len] = option(ctx, branch);
         }
-        element.children_len++;
-        if (check_ringbound && is_invalid(&element.children[element.children_len - 1])) {
+        elem.children_len++;
+        if (check_ringbound && is_invalid(&elem.children[elem.children_len - 1])) {
             check_ringbound = false;
-            element.children_len--;
+            elem.children_len--;
         }
     }
-    element.children_len--;
-    return element;
+    elem.children_len--;
+    RETURN_ELEMENT(elem, ctx);
 }
 
 ASTElement branch(parser_ctx *ctx) {
@@ -444,7 +445,8 @@ ASTElement chain_(parser_ctx *ctx, ASTElement *chain, size_t cap) {
     if (is_invalid(&chain->children[chain->children_len])) {
         chain->children[chain->children_len] = option(ctx, branched_atom);
         if (is_invalid(&chain->children[chain->children_len])) {
-            return *chain;
+            chain->to = ctx->buffer_pos - 1;
+			return *chain;
         }
         chain->children_len++;
         return chain_(ctx, chain, cap);
