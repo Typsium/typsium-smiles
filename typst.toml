@@ -3,9 +3,12 @@ name = "typsium-smiles"
 version = "0.1.0"
 repository = "https://github.com/Typsium/typsium-smiles"
 license = "MIT"
-entrypoint = "lib.typ"
-authors = ["β-吲哚基丙氨酸 <https://github.com/tryptophawa>", "Robotechnic <https://github.com/Robotechnic>"]
+entrypoint = "src/lib.typ"
+authors = [
+    "Typsium Community <https://github.com/Typsium>",
+    "Robotechnic <https://github.com/Robotechnic>"
+]
 description = "Simple SMILES structures in Typst"
 categories = [ "visualization", "integration", "utility" ]
 disciplines = [ "education", "chemistry" ]
-keywords = ["chemistry", "chemical", "smiles", "generator", "structure", "molecule", "compound", "atom", "lnChl"]
+keywords = ["chemistry", "chemical", "smiles", "generator", "structure", "molecule", "compound", "atom", "InChI"]
